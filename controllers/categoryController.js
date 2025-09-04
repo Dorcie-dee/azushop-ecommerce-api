@@ -1,5 +1,7 @@
+import { Types } from "mongoose";
 import { categoryModel } from "../models/categoryModel.js";
-import { createCategoryValidator } from "../validators/categoryValidator.js";
+import { createCategoryValidator, updateCategoryValidator } from "../validators/categoryValidator.js";
+import { userModel } from "../models/userModel.js";
 
 
 
@@ -10,23 +12,49 @@ export const createCategory = async (req, res, next) => {
     //dynamically accept Cloudinary upload or direct image URL
     const image = req.file?.path || req.body.image;
 
+    //fixing "null" string from parentCategory in model and testing(form-data)
+    let parentCategory = req.body.parentCategory;
+
+    if (parentCategory === "null" ||
+      parentCategory === "" ||
+      parentCategory === undefined) {
+      parentCategory = null;
+    }
+    // else {
+    //   // If not a valid ObjectId, try to treat as slug
+    //   if (!/^[0-9a-fA-F]{24}$/.test(parentCategory)) {
+    //     const parentDoc = await categoryModel.findOne({ slug: parentCategory });
+    //     parentCategory = parentDoc ? parentDoc._id : null;
+    //   }
+    // }
+
+
     const { error, value } = createCategoryValidator.validate({
       ...req.body,
-      image
+      image,
+      parentCategory,
     }, { abortEarly: false });
+
     if (error) {
       return res.status(422).json({ message: error.message })
     };
 
-    //save category
+    //saving category
     const incomingCategory = await categoryModel.create({
       ...value,
       admin: req.auth.id
     });
+
+    //populating admin details (e.g., fullName, email only)
+    const populatedCategory = await categoryModel
+      .findById(incomingCategory._id)
+      .populate("admin", "fullName email")
+      .populate("parentCategory", "name slug");   //will show parent details instead of just ID
+
     res.status(201).json({
       success: true,
       message: "Category created successfully",
-      category: incomingCategory
+      category: populatedCategory
     });
 
   } catch (error) {
@@ -38,160 +66,196 @@ export const createCategory = async (req, res, next) => {
 }
 
 
-//get all tracks
-export const getAllTracks = async (req, res) => {
+
+//get all categories
+export const getAllCategories = async (req, res) => {
   try {
-    // Fetch tracks with related data
-    const tracks = await trackModel
+    //fetching categories with related data
+    const categories = await categoryModel
       .find()
-      .populate({
-        path: 'admin', //ref in trackModel
-        select: 'firstName lastName email role contact isVerified lastLogin createdAt updatedAt profileImage location description resetTokenExpires resetToken'
-      })
-      .populate({
-        path: 'courses', //ref in trackModel
-        // select: '_id admin track title stacks image createdAt updatedAt'
-        select: '-_v'
-      })
-      .populate({
-        path: 'ratings', //ref in trackModel
-        // select: '_id learner track rating review createdAt updatedAt'
-        select: '-_v'
-      })
-      .sort({ createdAt: -1 }); // Latest first
+      .populate("admin", "fullName email")
+      .populate("parentCategory", "name slug")
+      .sort({ createdAt: -1 });     //latest first
 
     res.status(200).json({
       success: true,
-      count: tracks.length,
-      tracks
+      count: categories.length,
+      categories
     });
+
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      message: error.message
+    });
   }
 };
 
 
-//get track by id
-export const getTrackById = async (req, res) => {
+//get category by id
+export const getCategoryById = async (req, res) => {
   try {
+    const { id } = req.params;       //can be ObjectId or slug
 
-    const getTrackById = await trackModel.findById(req.params.id).exec();
-    if (!getTrackById) {
-      return res.status(404).json({ message: "Track not found" })
-    };
+    let category;
 
-    res.status(200).json(getTrackById);
+    if (Types.ObjectId.isValid(id)) {
+      //search by ObjectId
+      category = await categoryModel
+        .findById(id)
+        .exec();
+    } else {
+      //search by slug
+      category = await categoryModel
+        .findOne({ slug: id })
+        .exec();
+    }
+
+    if (!category) {
+      return res.status(404).json({ message: "Category not found" });
+    }
+
+    res.status(200).json(category);
 
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({
+      message: error.message
+    });
   }
 };
 
 
-//get tracks by one admin
-export const getAdminTracks = async (req, res) => {
-  try {
-    //find the admin id
-    const admin = req.auth.id
-    //check if admin has posted tracks
-    const tracks = await trackModel.find({ admin }).exec();
-    if (!tracks) {
-      return res.status(404).json({ message: "No admin data found!" })
-    };
-    res.status(200).json(tracks);
-
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-
-  }
-};
-
-
-//update track
-export const updateTrack = async (req, res, next) => {
+//update category
+export const updateCategory = async (req, res, next) => {
   try {
 
-    // Dynamically accept Cloudinary upload or direct image URL
+    //dynamically accept Cloudinary upload or direct image URL
     const image = req.file?.path || req.body.image;
 
+    const { id } = req.params;       //can be ObjectId or slug
+
+    //fixing "null" string from parentCategory in model and testing(form-data)
+    let parentCategory = req.body.parentCategory;
+
+    if (parentCategory === "null" ||
+      parentCategory === "" ||
+      parentCategory === undefined) {
+      parentCategory = null;
+    }
+
+
     // Validate request body
-    const { error, value } = updateTrackValidator.validate({
-      ...req.body, image
+    const { error, value } = updateCategoryValidator.validate({
+      ...req.body, image, parentCategory
     });
     if (error) {
-      return res.status(422).json({ message: error.details[0].message });
+      return res.status(422).json({
+        message: error.details[0].message
+      });
     }
 
-    // Update the track
-    const result = await trackModel.findByIdAndUpdate(req.params.id, value, {
+    //will always set admin to the currently logged-in admin
+    const updateData = {
+      ...value,
+      admin: req.auth.id,
+    };
+
+
+    let result;
+
+    if (Types.ObjectId.isValid(id)) {
+      //search by ObjectId
+      result = await categoryModel
+        .findById(id)
+        .exec();
+    } else {
+      //search by slug
+      result = await categoryModel
+        .findOne({ slug: id })
+        .exec();
+    }
+
+    //update the category
+    const update = await categoryModel.findByIdAndUpdate(result, updateData, {
       new: true,
       runValidators: true,
-    });
+    })
+      .populate("admin", "fullName email")
+      .populate("parentCategory", "name slug");
 
-    // Check if the track exists
+    //check if the category exists
     if (!result) {
-      return res.status(404).json({ message: "Track not found" });
+      return res.status(404).json({ message: "Category not found" });
     }
 
-    // Return the updated track
+    //return the updated track
     res.status(200).json({
       success: true,
-      message: 'Track updated successfully',
-      track: result,
+      message: 'Category updated successfully',
+      category: update,
     });
+
   } catch (error) {
     next(error);
   }
 };
 
 
-//delete track
-export const deleteTrack = async (req, res) => {
+//delete category
+export const deleteCategory = async (req, res) => {
   try {
     if (!req.auth || !req.auth.id) {
-      return res.status(401).json({ message: "Unauthorized access" });
+      return res.status(401).json({
+        message: "Unauthorized access"
+      });
     } //or i can just add isAuthorised at the router side
 
-    const trackId = req.params.id;
+    const categoryId = req.params.id;
 
-    const track = await trackModel.findById(trackId);
-    if (!track) {
-      return res.status(404).json({ message: "Track not found!" });
+    const category = await categoryModel.findById(categoryId);
+    if (!category) {
+      return res.status(404).json({
+        message: "Category not found!"
+      });
     };
 
+    const adminId = req.auth.id;
+    const admin = await userModel.findById(adminId).select("fullName");
 
-    // Delete associated courses
-    await courseModel.deleteMany({ track: trackId });
+    //delete category
+    await categoryModel.findByIdAndDelete(categoryId);
 
-    // Delete associated ratings
-    await ratingModel.deleteMany({ track: trackId });
+    res.json({
+      message: "Category deleted successfully!",
+      deletedBy: admin ? admin.fullName : "Unknown Admin",
+      category
+    });
 
-    // Delete the track itself
-    await trackModel.findByIdAndDelete(trackId);
-
-    res.json({ message: "Track and associated data deleted successfully!" });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({
+      message: "Server error",
+      error: error.message
+    });
   }
 };
 
 
-//search tracks
-export const searchTracks = async (req, res, next) => {
+
+//search categories
+export const searchCategories = async (req, res, next) => {
   try {
     const {
       name = '',
-      instructor = '',
+      slug = '',
       duration = '',
       minPrice = 0,
       maxPrice = 1000000,
-      sortBy = 'createdAt', // default sort field
-      order = 'desc'         // default order
+      sortBy = 'createdAt',              //default sort field
+      order = 'desc'                     //default order
     } = req.query;
 
     const query = {
       ...(name && { name: { $regex: name, $options: 'i' } }),
-      ...(instructor && { instructor: { $regex: instructor, $options: 'i' } }),
+      ...(slug && { slug: { $regex: instructor, $options: 'i' } }),
       ...(duration && { duration }),
       price: {
         $gte: Number(minPrice),
@@ -203,55 +267,22 @@ export const searchTracks = async (req, res, next) => {
     const sortField = sortBy;
     const sortOrder = order === 'asc' ? 1 : -1;
 
-    const tracks = await trackModel.find(query)
+    const categories = await categoryModel.find(query)
       .sort({ [sortField]: sortOrder })
       .lean();
 
     res.status(200).json({
       success: true,
-      count: tracks.length,
-      data: tracks
+      count: categories.length,
+      data: categories
     });
+
   } catch (error) {
     next(error);
   }
 };
 
 
-
-
-
-//OR
-// export const searchTracks = async (req, res, next) => {
-//   try {
-//     //parse query parameters
-//     const { name, instructor, minPrice, maxPrice } = req.query;
-
-//     if (name) {
-//       query.name = { $regex: name, $options: "i" };
-//     }
-
-//     if (instructor) {
-//       query.instructor = { $regex: instructor, $options: "i" };
-//     }
-
-//     if (duration) {
-//       query.duration = { $regex: duration, $options: "i" };
-//     }
-
-//     if (minPrice || maxPrice) {
-//       query.price = {};
-//       if (minPrice) query.price.$gte = Number(minPrice);
-//       if (maxPrice) query.price.$lte = Number(maxPrice);
-//     }
-
-//     const results = await trackModel.find(query).populate("admin", "fullName email");
-
-//     res.status(200).json(results);
-//   } catch (error) {
-//     next(error);
-//   }
-// };
 
 
 

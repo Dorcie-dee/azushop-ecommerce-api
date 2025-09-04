@@ -35,7 +35,20 @@ export const createCategoryValidator = Joi.object({
 
 export const updateCategoryValidator = Joi.object({
   name: Joi.string().min(2).max(50),
-  parentCategory: Joi.string().optional().allow(null, ""),
-  image: Joi.string().uri().optional(),
-  isActive: Joi.boolean(),
+
+  parentCategory: Joi.string()
+    .optional()
+    .allow(null, "")
+    .messages({
+      "string.base": `"parentCategory" should be a valid ID string`,
+    }),
+
+  image: Joi.string()
+    .uri()
+    .optional()
+    .messages({
+      "string.uri": `"image" must be a valid URL`,
+    }),
+
+  isActive: Joi.boolean().default(true),
 }).min(1);         //must provide at least one field to update

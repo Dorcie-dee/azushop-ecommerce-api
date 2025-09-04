@@ -40,7 +40,7 @@ export const registerUser = async (req, res) => {
     const incomingUser = await userModel.create({
       ...value,
       password: hashingPassword,
-      role: "user",
+      role: value.role || "user",
       provider: 'local',
       isVerified: false,
       verificationToken,

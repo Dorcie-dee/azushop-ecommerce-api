@@ -4,6 +4,12 @@ import normalize from "normalize-mongoose";
 
 
 const categorySchema = new Schema({
+  admin: {
+    type: Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+
   name: {
     type: String,
     required: true,
