@@ -91,6 +91,7 @@ export const getAllCategories = async (req, res) => {
 };
 
 
+
 //get category by id
 export const getCategoryById = async (req, res) => {
   try {
@@ -122,6 +123,7 @@ export const getCategoryById = async (req, res) => {
     });
   }
 };
+
 
 
 //update category
@@ -200,6 +202,7 @@ export const updateCategory = async (req, res, next) => {
 };
 
 
+
 //delete category
 export const deleteCategory = async (req, res) => {
   try {
@@ -240,49 +243,78 @@ export const deleteCategory = async (req, res) => {
 
 
 
-//search categories
-export const searchCategories = async (req, res, next) => {
+export const searchCategory = async (req, res) => {
   try {
     const {
-      name = '',
-      slug = '',
-      duration = '',
-      minPrice = 0,
-      maxPrice = 1000000,
-      sortBy = 'createdAt',              //default sort field
-      order = 'desc'                     //default order
+      name,                                 //keyword to search in name or
+      slug,                                 //keyword to search in slug
+      parentCategory,                       //filtering by parent category id
+      isActive,                             //filtering active/inactive categories
+      sortBy,                               //sorting field: name, createdAt, etc.
+      order = "asc",                        //asc or desc
+      page = 1,                             //pagination: page number
+      limit = 10                            //pagination: items per page
     } = req.query;
 
-    const query = {
-      ...(name && { name: { $regex: name, $options: 'i' } }),
-      ...(slug && { slug: { $regex: instructor, $options: 'i' } }),
-      ...(duration && { duration }),
-      price: {
-        $gte: Number(minPrice),
-        $lte: Number(maxPrice) || 1000000
-      }
+    const filter = {};
+
+    //searching by name or slug (case-insensitive)
+    if (name) {
+      filter.name = { $regex: name, $options: "i" }
     };
 
-    // Determine sorting logic
-    const sortField = sortBy;
-    const sortOrder = order === 'asc' ? 1 : -1;
+    if (slug) {
+      filter.slug = { $regex: slug, $options: "i" }
+    };
 
-    const categories = await categoryModel.find(query)
-      .sort({ [sortField]: sortOrder })
+
+    //filtering by parentCategory (must be a valid ObjectId)
+    if (parentCategory && Types.ObjectId.isValid(parentCategory)) {
+      filter.parentCategory = parentCategory;
+    }
+
+    //filtering by isActive
+    if (isActive === "true") filter.isActive = true;
+    if (isActive === "false") filter.isActive = false;
+
+    //sorting
+    const sortOptions = {};
+    if (sortBy) {
+      sortOptions[sortBy] = order === "desc" ? -1 : 1;
+    } else {
+      sortOptions.createdAt = -1;               //default: newest first
+    }
+
+    //pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const categories = await categoryModel
+      .find(filter)
+      // .populate("admin", "fullName email")
+      .populate("parentCategory", "name slug")
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(parseInt(limit))
       .lean();
+
+    const total = await categoryModel.countDocuments(filter);
 
     res.status(200).json({
       success: true,
-      count: categories.length,
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
       data: categories
     });
 
   } catch (error) {
-    next(error);
+    console.error("Category search error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 };
-
-
 
 
 

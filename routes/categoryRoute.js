@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createCategory, deleteCategory, getAllCategories, getCategoryById, updateCategory } from "../controllers/categoryController.js";
+import { createCategory, deleteCategory, getAllCategories, getCategoryById, searchCategory, updateCategory } from "../controllers/categoryController.js";
 import { isAuthenticated, isAuthorized } from "../middlewares/authMiddleware.js";
 import { categoryImageUpload } from "../middlewares/imageUpload.js";
 
@@ -12,6 +12,9 @@ categoryRouter.post('/category', isAuthenticated, isAuthorized(['admin']) , cate
 //all categories
 categoryRouter.get('/category', getAllCategories);
 
+//search category
+categoryRouter.get('/category/search', searchCategory);
+
 //one or single category
 categoryRouter.get('/category/:id', getCategoryById);
 
@@ -20,6 +23,7 @@ categoryRouter.patch('/category/:id', isAuthenticated, isAuthorized(['admin']), 
 
 //delete category
 categoryRouter.delete('/category/:id', isAuthenticated, isAuthorized(['admin']), deleteCategory);
+
 
 
 
