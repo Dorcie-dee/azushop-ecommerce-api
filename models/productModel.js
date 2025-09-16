@@ -1,6 +1,7 @@
 import { Schema, model, Types } from "mongoose";
 import slugify from "slugify";
 import normalize from "normalize-mongoose";
+import { categoryModel } from "./categoryModel.js";
 
 
 
@@ -27,7 +28,8 @@ const productSchema = new Schema({
   sku: {
     type: String,
     unique: true,        //stock keeping unit for internal product tracking
-    required: true,
+    sparse: true
+    // required: true,
   },
 
   description: {
@@ -115,7 +117,7 @@ const productSchema = new Schema({
   status: {
     type: String,
     enum: ["draft", "published", "archived"],      //product visibility
-    default: "draft",
+    default: "published",
   },
 
   isActive: {
@@ -150,7 +152,7 @@ productSchema.virtual("inStock").get(function () {
 
 
 //virtual field for calculating discount percentage
-productSchema.virtual('discountPercentage').get(function() {
+productSchema.virtual('discountPercentage').get(function () {
   if (this.discountPrice && this.discountPrice < this.price) {
     return Math.round(((this.price - this.discountPrice) / this.price) * 100);
   }
@@ -166,6 +168,32 @@ productSchema.pre("save", function (next) {
   }
   next();
 });
+
+
+//auto-generating SKU if missing
+productSchema.pre("save", async function (next) {
+  if (!this.sku) {
+    let categoryCode = "GEN";      //fallback
+    try {
+      if (this.category) {
+        const Category = this.model("Category");      //avoids circular imports
+        const categoryDoc = await categoryModel.findById(this.category);
+        if (categoryDoc && categoryDoc.name) {
+          categoryCode = categoryDoc.name.substring(0, 3).toUpperCase();
+        }
+      }
+    } catch (err) {
+      //if category not found, leave GEN
+    }
+
+    const nameCode = this.name.replace(/\s+/g, "").substring(0, 5).toUpperCase();
+    const uniqueCode = Date.now().toString().slice(-5);
+
+    this.sku = `${categoryCode}-${nameCode}-${uniqueCode}`;
+  }
+  next();
+});
+
 
 productSchema.plugin(normalize);
 

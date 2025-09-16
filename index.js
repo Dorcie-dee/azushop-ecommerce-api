@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import cors from "cors";
 import authRouter from "./routes/authRoute.js";
 import categoryRouter from "./routes/categoryRoute.js";
+import productRouter from "./routes/productRoute.js";
 
 
 
@@ -20,6 +21,7 @@ app.use(express.urlencoded({ extended: true }));
 //routes
 app.use("/api/auth", authRouter);
 app.use("/api", categoryRouter);
+app.use("/api", productRouter);
 
 
 
