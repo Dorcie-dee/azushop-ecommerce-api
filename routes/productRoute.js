@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { isAuthenticated, isAuthorized } from "../middlewares/authMiddleware.js";
 import { productImageUpload } from "../middlewares/imageUpload.js";
-import { createProduct, deleteProduct, getAllProducts, getProductById, searchProducts, updateProduct } from "../controllers/productController.js";
+import { createProduct, deleteProduct, getAllProducts, getProductById, searchProducts, updateProduct, getVendorProducts } from "../controllers/productController.js";
 
 
 const productRouter = Router();
@@ -11,6 +11,9 @@ productRouter.post('/product', isAuthenticated, isAuthorized(['admin']), product
 
 //all products
 productRouter.get('/product', getAllProducts);
+
+//specific vendor/admin's products
+productRouter.get('/product/vendor', isAuthenticated, getVendorProducts);
 
 //search products
 productRouter.get('/product/search', searchProducts);

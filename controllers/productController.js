@@ -30,17 +30,17 @@ export const createProduct = async (req, res) => {
     }
 
 
-      //converting slug to ObjectId
+    //converting slug to ObjectId
     let categoryId = value.category;
 
     if (typeof value.category === "string" && !/^[0-9a-fA-F]{24}$/.test(value.category)) {
-      const categoryDoc = await categoryModel.findOne({ 
-        slug: value.category 
+      const categoryDoc = await categoryModel.findOne({
+        slug: value.category
       });
 
       if (!categoryDoc) {
-        return res.status(404).json({ 
-          message: "Category not found" 
+        return res.status(404).json({
+          message: "Category not found"
         });
       }
       categoryId = categoryDoc._id;
@@ -139,14 +139,22 @@ export const getVendorProducts = async (req, res) => {
 
     const userId = req.auth.id
 
-    const items = await productModel.find({ userId }).exec();
-    if (!items) {
+    const items = await productModel
+      .find({ admin: userId })                      //filtering by admin field
+      // .populate("admin", "fullName email")       //shows vendor info
+      .exec();
+
+    if (!items || items.length === 0) {
       return res.status(404).json({
-        message: "Admin not found!"
+        message: "No products found for this vendor!"
       });
     }
 
-    res.status(200).json(items);
+    res.status(200).json({
+      success: true,
+      count: items.length,
+      data: items
+    });
 
   } catch (error) {
     res.status(500).json({
@@ -210,7 +218,10 @@ export const updateProduct = async (req, res) => {
     });
 
   } catch (error) {
-    next(error);
+    res.status(500).json({
+      message: "Server error",
+      error: error.message
+    });
   }
 
 };
@@ -257,7 +268,7 @@ export const deleteProduct = async (req, res, next) => {
 
 
 
-export const searchProducts = async (req, res, next) => {
+export const searchProducts = async (req, res) => {
   try {
     //parsing query parameters
     const {
@@ -285,14 +296,12 @@ export const searchProducts = async (req, res, next) => {
     };
 
     if (category) {
-      filter.category = { category }
+      filter.category = category
     };
 
-    if (price) {
-      filter.price = {
-        $gte: Number(minPrice),
-        $lte: Number(maxPrice) || 1000000       //fallback for missing maxPrice
-      }
+    filter.price = {
+      $gte: Number(minPrice),
+      $lte: Number(maxPrice) || 1000000       //fallback for missing maxPrice
     };
 
     //sorting
@@ -309,8 +318,7 @@ export const searchProducts = async (req, res, next) => {
 
     const products = await productModel
       .find(filter)
-      .populate("admin", "fullName email")
-      .populate("parentCategory", "name slug")
+      .populate("category", "name slug")
       .sort(sortOptions)
       .skip(skip)
       .limit(parseInt(limit))
@@ -331,8 +339,7 @@ export const searchProducts = async (req, res, next) => {
       message: "Server error",
       error: error.message
     });
-
-  } next(error);
+  };
 };
 
 
