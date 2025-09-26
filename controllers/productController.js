@@ -8,10 +8,7 @@ import { userModel } from "../models/userModel.js";
 
 export const createProduct = async (req, res) => {
   try {
-
-    //dynamically accept Cloudinary upload or direct image URL
-    // const image = req.file?.path || req.body.image;
-
+    
     //validate request body
     const { error, value } = createProductValidator.validate({
       ...req.body,
@@ -126,6 +123,7 @@ export const getProductById = async (req, res) => {
 
   } catch (error) {
     res.status(500).json({
+      success: false,
       message: error.message
     });
   }
@@ -229,7 +227,7 @@ export const updateProduct = async (req, res) => {
 
 
 //detleting a product
-export const deleteProduct = async (req, res, next) => {
+export const deleteProduct = async (req, res) => {
   try {
     if (!req.auth || !req.auth.id) {
       return res.status(401).json({
@@ -242,7 +240,7 @@ export const deleteProduct = async (req, res, next) => {
     const items = await productModel.findById(productId);
     if (!items) {
       return res.status(404).json({
-        message: "Product not found!"
+        message: "Product not found"
       });
     };
 
@@ -253,7 +251,7 @@ export const deleteProduct = async (req, res, next) => {
     await productModel.findByIdAndDelete(productId);
 
     res.json({
-      message: "Product deleted successfully!",
+      message: "Product deleted successfully",
       deletedBy: admin ? admin.fullName : "Unknown Admin",
       items
     });

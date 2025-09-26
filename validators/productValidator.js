@@ -60,14 +60,4 @@ export const updateProductValidator = Joi.object({
 
 
 
-//search / filter
-export const searchProductValidator = Joi.object({
-  name: Joi.string(),
-  slug: Joi.string(),
-  category: Joi.string(),
-  brand: Joi.string(),
-  // minPrice: Joi.number().min(0),
-  // maxPrice: Joi.number().min(0),
-  isActive: Joi.boolean(),
-  status: Joi.string().valid("draft", "published", "archived"),
-}).with("minPrice", "maxPrice"); // ensure min & max are provided together
+
