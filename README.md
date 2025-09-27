@@ -1,9 +1,3 @@
-Got it ✅ — I’ll expand the **Azushop README** to include **example request & response payloads** for each module (Auth, Products, Categories, Orders). That way, devs can quickly test your API just like the LAMS example you showed.
-
-Here’s the updated **README.md** draft:
-
----
-
 # 🛒 Azushop E-commerce API
 
 Welcome to **Azushop**, a feature-rich **E-commerce REST API** that powers modern online stores with authentication, product management, categories, and orders.
@@ -15,7 +9,7 @@ This project covers:
 
 # 🕹️ Published POSTMAN Documentation URL
 
-👉 [Azushop API Documentation](https://documenter.getpostman.com/view/xxxxxx)
+👉 [Azushop API Documentation](https://documenter.getpostman.com/view/42782764/2sB3QDvsw5)
 
 ---
 
