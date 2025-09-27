@@ -98,7 +98,7 @@ export const createOrder = async (req, res) => {
     const populatedOrder = await orderModel
       .findById(newOrder._id)
       .populate("customerId", "fullName email")
-      .populate("items.productId", "name price sku");
+      .populate("items.productId", "name price sku stock");
 
     return res.status(201).json({
       success: true,
@@ -155,7 +155,7 @@ export const getAllOrders = async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit))
       .populate("customerId", "fullName email")
-      .populate("items.productId", "name price");
+      .populate("items.productId", "name price stock");
 
     const totalOrders = await orderModel.countDocuments(query);
 
@@ -181,19 +181,24 @@ export const getAllOrders = async (req, res) => {
 //get all orders - customer only
 export const getMyOrders = async (req, res) => {
   try {
+
+    if (!req.auth || !req.auth.id) {
+      return res.status(401).json({ message: "Unauthorized access" });
+    }
+
     const { sortBy = "createdAt", order = "desc", page = 1, limit = 10 } = req.query;
 
     const skip = (page - 1) * limit;
 
     const customerId = req.auth.id
 
-    const orders = await orderModel.find({ user: customerId })
+    const orders = await orderModel.find({ customerId })
       .sort({ [sortBy]: order === "desc" ? -1 : 1 })
       .skip(skip)
       .limit(parseInt(limit))
       .populate("items.productId", "name price");
 
-    const totalOrders = await orderModel.countDocuments({ user: customerId });
+    const totalOrders = await orderModel.countDocuments({ customerId });
 
     res.status(200).json({
       success: true,
@@ -226,7 +231,7 @@ export const getSingleOrder = async (req, res) => {
 
     const order = await orderModel.findById(id)
       .populate("customerId", "fullName email")
-      .populate("items.productId", "name price sku");
+      .populate("items.productId", "name price sku stock");
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
@@ -263,14 +268,21 @@ export const updateOrder = async (req, res) => {
       });
     }
 
+    const updatedData = {
+      ...value,
+      admin: req.auth.id,
+    };
+
     const order = await orderModel
       .findById(id)
       .exec();
 
     //updating order
-    const update = await orderModel.findByIdAndUpdate(order, value, {
+    const updatedOrder = await orderModel.findByIdAndUpdate(id,
+      updatedData,
+      {
       new: true,
-      runValidators: true
+      runValidators: false
     })
 
     if (!order) {
@@ -282,7 +294,7 @@ export const updateOrder = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Order updated successfully",
-      order: update,
+      order: updatedOrder,
     });
 
   } catch (error) {

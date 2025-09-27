@@ -26,6 +26,7 @@ export const createProductValidator = Joi.object({
   numReviews: Joi.number().integer().min(0).default(0),
   status: Joi.string().valid("draft", "published", "archived").default("published"),
   isActive: Joi.boolean().default(true),
+  inStock: Joi.boolean().default(true)
 });
 
 
@@ -51,6 +52,7 @@ export const updateProductValidator = Joi.object({
     })
   ),
   specs: Joi.object().pattern(Joi.string(), Joi.string()),
+  inStock: Joi.boolean().default(true),
   attributes: Joi.object().pattern(Joi.string(), Joi.string()),
   ratings: Joi.number().min(0).max(5),
   numReviews: Joi.number().integer().min(0),

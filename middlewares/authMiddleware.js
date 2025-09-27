@@ -8,9 +8,9 @@ export const isAuthenticated = expressjwt({
     requestProperty: 'auth'
 });
 
-async function checkIfUserIsVendor(id){
-    return await vendorModel.findById(req.auth.id);
-}
+// async function checkIfUserIsVendor(id){
+//     return await vendorModel.findById(req.auth.id);
+// }
 
 
 
@@ -19,7 +19,8 @@ async function checkIfUserIsVendor(id){
 export const isAuthorized = (roles) => {
     return async (req, res, next) => {
         try {
-            let user = await checkIfUserIsVendor(req.auth.id);
+            // let user = await checkIfUserIsVendor(req.auth.id);
+            let user = await vendorModel.findById(req.auth.id)
             let role = 'vendor';
 
             if (!user) {

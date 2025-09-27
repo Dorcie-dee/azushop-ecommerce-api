@@ -1,14 +1,14 @@
 import Joi from "joi";
 
 export const createOrderValidator = Joi.object({
-  customerId: Joi.string()
-    .hex()
-    .length(24)
-    .optional()
-    .messages({
-      "string.empty": "Customer ID is required",
-      "string.length": "Customer ID must be a valid ObjectId",
-    }),
+  // customerId: Joi.string()
+  //   .hex()
+  //   .length(24)
+  //   .optional()
+  //   .messages({
+  //     "string.empty": "Customer ID is required",
+  //     "string.length": "Customer ID must be a valid ObjectId",
+  //   }),
 
   items: Joi.array()
     .items(
@@ -21,9 +21,9 @@ export const createOrderValidator = Joi.object({
             "string.empty": "Product ID is required",
             "string.length": "Product ID must be a valid ObjectId",
           }),
-        name: Joi.string().required(),
+        name: Joi.string().optional(),
         quantity: Joi.number().integer().min(1).required(),
-        price: Joi.number().positive().required(),
+        price: Joi.number().positive().optional(),
         sku: Joi.string().optional(),
         variants: Joi.object().pattern(Joi.string(), Joi.string()).optional(), 
         subtotal: Joi.number().optional(),

@@ -27,7 +27,7 @@ orderRouter.patch('/orders/:id', isAuthenticated, isAuthorized(['admin']), updat
 
 
 //customer cancels their own order if it’s still in `pending` or `processing`.
-orderRouter.patch('/orders/:id/cancel', isAuthenticated, cancelOrder);
+orderRouter.patch('/orders/:id/cancel', isAuthenticated, isAuthorized(['user']), cancelOrder);
 
 
 //
